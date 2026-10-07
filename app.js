@@ -247,10 +247,23 @@ async function finish() {
     if (cur === L) { L++; ls('rk_level', L); }
   }
   drawPic($('winPic'), lv.rows);
+  setTimeout(() => alive($('winPic'), lv), 350);                                 // картина оживает
   $('stars').textContent = '★'.repeat(st) + '☆'.repeat(3 - st);
   $('winT').textContent = own >= 0 ? `Твоя картина «${lv.name}» готова! 🎨` : cur === LV.PICS.length - 1 ? 'Галерея собрана! 💐' : `Картина «${lv.name}» готова!`;
   $('winInfo').textContent = extra > 0 ? 'Дорисовала с дополнительными ходами — тоже считается!' : `Осталось ходов: ${left}`;
   $('win').hidden = false; busy = false;
+}
+// ─── живая картина: движение (CSS) или смена кадров — моргание (цвет глаз → цвет век), взмах крыльев (крайние столбцы) ───
+function alive(cv, level) {
+  const a = LV.ANIM[level.name] || 'beat', t = Array.isArray(a) ? a[0] : a, rows = level.rows;
+  cv.classList.remove('a-sway', 'a-beat', 'a-bob', 'a-spin', 'a-twinkle', 'a-fly'); void cv.offsetWidth;
+  if (t === 'blink' || t === 'flap') {
+    const f2 = t === 'flap' ? rows.map(r => '.' + r.slice(1, 7) + '.') : rows.map(r => r.split(a[1]).join(a[2]));
+    const plan = t === 'flap' ? [180, 180, 180, 180, 180, 180, 180, 180] : [700, 160, 500, 160];   // мс до смены кадра
+    let k = 0; const step = () => { if (k >= plan.length || $('win').hidden) return drawPic(cv, rows); drawPic(cv, k % 2 ? rows : f2); setTimeout(step, plan[k++]); };
+    if (t === 'flap') cv.classList.add('a-bob');
+    setTimeout(step, t === 'flap' ? 0 : 500);
+  } else cv.classList.add('a-' + t);
 }
 $('next').onclick = () => { $('win').hidden = true; start(L); };
 $('more').onclick = () => { extra += 5; $('out').hidden = true; hud(); bell(NOTE.K, 0, 1, 0.14); };

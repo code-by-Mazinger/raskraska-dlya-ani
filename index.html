@@ -83,6 +83,14 @@ h1{margin:0;font-size:clamp(17px,5vw,24px);font-weight:800;background:linear-gra
 .go.ghost{background:rgba(255,255,255,.75);color:var(--accent);box-shadow:none;border:2px solid #f3b6d4}
 .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px;border:3px solid #fff;box-shadow:0 8px 26px rgba(90,40,90,.25);background:var(--paper)}
+/* живая картина: 2–3 секунды движения в окне победы */
+.a-sway{transform-origin:50% 100%;animation:a-sway 1s ease-in-out 3}@keyframes a-sway{25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
+.a-beat{animation:a-beat .55s ease-in-out 5}@keyframes a-beat{50%{transform:scale(1.1)}}
+.a-bob{animation:a-bob .9s ease-in-out 3}@keyframes a-bob{50%{transform:translateY(-12px) rotate(-2deg)}}
+.a-spin{animation:a-spin 2.6s cubic-bezier(.4,0,.3,1) 1}@keyframes a-spin{to{transform:rotate(360deg)}}
+.a-twinkle{animation:a-tw .5s ease-in-out 6}@keyframes a-tw{50%{filter:brightness(1.3) drop-shadow(0 0 14px #fff)}}
+.a-fly{animation:a-fly 2.4s ease-in-out 1}@keyframes a-fly{40%{transform:translateY(-120px) scale(.8)}45%{opacity:0}55%{opacity:0;transform:translateY(120px)}60%{opacity:1}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){canvas.pic{animation:none!important}}
 .stars{font-size:30px;letter-spacing:4px;margin:8px 0}
 #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;margin:12px 0}
 #grid .g{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700;color:var(--ink2);cursor:pointer}
