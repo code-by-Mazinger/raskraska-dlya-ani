@@ -100,6 +100,7 @@ function startLevel(level, i, j) {
   drawPic($('goal'), lv.rows);
   $('lvl').textContent = j >= 0 ? `Моя картина · ${lv.name}` : i < LV.PICS.length ? `Картина ${i + 1} из ${LV.PICS.length} · ${lv.name}` : `${lv.name} · свободная игра`;
   hud(); poke();
+  if (Math.random() < 0.4) setTimeout(() => say(someCat(), phrase('start', lv.name), 2400), 600);   // котик иногда объявляет картину
   if (j < 0 && i === 2 && !ls('rk_intro')) { ls('rk_intro', 1); $('intro').hidden = false; }
 }
 function hud() {
@@ -143,13 +144,15 @@ async function turn(a, b) {
   await wait(190);
   const rounds = move(S, a, b);
   if (!rounds) { place(ea, a[0], a[1]); place(eb, b[0], b[1]); bell(220, 0, 0.25, 0.07); await wait(190); busy = false; return; }
-  let combo = 0;
+  let combo = 0, bornSp = '';
   for (const R of rounds) {
+    if (R.born && R.born.length && !bornSp) bornSp = R.born[0].sp;   // котик заметит новый инструмент
     if (R.shuffle) { await reshuffle(); continue; }
     await playRound(R, combo++);
   }
   hud(); busy = false; poke();
-  if (combo >= 3) { const c = cats[Math.floor(Math.random() * 2)]; purr(); happy(c); say(c, 'Мрр, красиво! 💕'); }
+  if (combo >= 3) { const c = someCat(); purr(); happy(c); say(c, phrase('combo')); }
+  else if (bornSp) { const c = someCat(); happy(c); say(c, phrase(bornSp)); }
   if (won(S)) return finish();
   if (budget + extra - S.moves <= 0) $('out').hidden = false;
 }
@@ -200,7 +203,10 @@ async function reshuffle() {
 // ─── подсказка: 9 с без дела — подсвечиваю ход, который красит больше всего ───
 let hintIds = [];
 function clearHint() { for (const id of hintIds) pcs.get(id)?.classList.remove('hint'); hintIds = []; }
-function poke() { clearTimeout(idleT); clearHint(); idleT = setTimeout(() => { if (busy || !$('start').hidden || won(S)) return;
+let idle2 = 0;
+function poke() { clearTimeout(idleT); clearTimeout(idle2); clearHint();
+  idle2 = setTimeout(() => { if (!busy && $('start').hidden && !won(S)) say(someCat(), phrase('idle')); }, 25000);   // долго без хода — котик зовёт
+  idleT = setTimeout(() => { if (busy || !$('start').hidden || won(S)) return;
   const m = bestMove(S, 7); if (!m) return; hintIds = m.map(([x, y]) => S.B[y][x].id); for (const id of hintIds) pcs.get(id)?.classList.add('hint'); }, 9000); }
 
 // ─── котики внизу: мурлыкают, если погладить, и подсказывают ход; радуются каскадам и готовой картине ───
@@ -224,13 +230,27 @@ function hearts(el) { const r = el.getBoundingClientRect();
     document.body.appendChild(h); setTimeout(() => h.remove(), 1800); } }
 function happy(el, ms = 1600) { el.classList.add('happy'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('happy'), ms); }
 function say(el, t, ms = 2200) { const b = el.querySelector('.bub'); b.textContent = t; b.classList.add('on'); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove('on'), ms); }
+// фразы котиков: по поводу, случайно, без повтора подряд
+const PHR = {
+  hint: ['Вот сюда! 🐾', 'Может, сюда? 😺', 'Мяу, смотри! ✨', 'Попробуй здесь 🌸', 'Вот тут красиво будет 🎨', 'Сюда, сюда! 🐾'],
+  combo: ['Мрр, красиво! 💕', 'Ух ты, сколько краски! 🎨', 'Красота! 🌸', 'Вот это да! ✨', 'Мур-мур 💜', 'Так держать! 😻'],
+  row: ['Ого, кисть! 🖌', 'Кисточка! 🖌', 'Теперь целый ряд! 🖌'], col: ['Ого, кисть! 🖌', 'Кисточка! 🖌', 'Теперь целый столбик! 🖌'],
+  blot: ['Клякса! 💦', 'Ой, клякса! 💦', 'Брызги! 💦'], pal: ['Палитра! 🎨', 'Вся палитра! 🎨', 'Мяу, палитра! 🎨'],
+  win: ['Шедевр! 🖼', 'Повесим на стену! 😻', 'Какая красота! 💕', 'Браво! 👏', 'Мур, нравится! 💜', 'Лучшая картина! 🌸'],
+  more: ['Ничего, дорисуем! 💪', 'Ещё чуть-чуть! 🌸', 'Почти готово! ✨'],
+  idle: ['Погладь меня 🐾', 'Мрр… 😴', 'Мяу? 😺', 'Я тут, если что 🐾'],
+  start: n => [`Нарисуем «${n}»? 🎨`, `О, «${n}»! 😺`, `Давай «${n}»! 🌸`] };
+let lastPhr = '';
+function phrase(kind, arg) { const a = typeof PHR[kind] === 'function' ? PHR[kind](arg) : PHR[kind]; let p;
+  do p = a[Math.floor(Math.random() * a.length)]; while (p === lastPhr && a.length > 1); return (lastPhr = p); }
+const someCat = () => cats[Math.floor(Math.random() * 2)];
 function catJump(el) { el.classList.remove('jump'); void el.offsetWidth; el.classList.add('jump'); }
 cats.forEach(el => el.addEventListener('pointerdown', e => {
   e.preventDefault(); audio(); purr(); hearts(el); happy(el); catJump(el);
   if (busy || won(S) || !$('start').hidden) return;
   clearHint(); const m = bestMove(S, 7); if (!m) return;                         // подсказка: ход, который красит больше всего
   hintIds = m.map(([x, y]) => S.B[y][x].id); for (const id of hintIds) pcs.get(id)?.classList.add('hint');
-  say(el, 'Вот сюда! 🐾');
+  say(el, phrase('hint'));
 }));
 
 // ─── итог картины ───
@@ -238,7 +258,7 @@ async function finish() {
   busy = true;
   for (const [, el] of pcs) { el.style.transition = 'transform .6s ease-in, opacity .6s'; el.style.transform += ' translateY(-40px) scale(.4)'; el.style.opacity = 0; }
   [0, 4, 7, 12].forEach((s, k) => bell(NOTE.R * Math.pow(2, s / 12), k * 0.12, 1.8, 0.14));
-  cats.forEach(c => { happy(c, 3000); hearts(c); catJump(c); }); purr();
+  cats.forEach(c => { happy(c, 3000); hearts(c); catJump(c); say(c, phrase('win'), 2600); }); purr();
   await wait(700);
   const left = budget + extra - S.moves, st = extra > 0 ? 1 : left >= budget * 0.25 ? 3 : 2;
   if (own < 0) {
@@ -266,7 +286,7 @@ function alive(cv, level) {
   } else cv.classList.add('a-' + t);
 }
 $('next').onclick = () => { $('win').hidden = true; start(L); };
-$('more').onclick = () => { extra += 5; $('out').hidden = true; hud(); bell(NOTE.K, 0, 1, 0.14); };
+$('more').onclick = () => { extra += 5; $('out').hidden = true; hud(); bell(NOTE.K, 0, 1, 0.14); const c = someCat(); happy(c); say(c, phrase('more')); };
 $('introGo').onclick = () => { $('intro').hidden = true; };
 
 // ─── галерея: нарисованные — в цвете, следующие — силуэтом ───
