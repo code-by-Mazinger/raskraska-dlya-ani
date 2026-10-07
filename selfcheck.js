@@ -49,4 +49,9 @@ if (CAL) { for (const t of table) console.log(`${t.name.padEnd(14)} клеток
   console.log('MOVES = ' + JSON.stringify(table.map(t => Math.ceil(t.med * 1.8 + 6)))); }   // от медианы: у сложных картин большой разброс; человек медленнее жадного бота
 console.log(`✓ бот закрашивает все ${table.length} картин (медиана ходов ${table.map(t => t.med).join(', ')})`);
 assert(LV.MOVES.length === LV.PICS.length, 'таблица ходов не совпадает с картинами');
+// 5. мастерская: своя картина становится уровнем, ходы считаются ботом
+const own = LV.levelFrom('Моя', ['KK....KK', 'KK....KK', '........', '...YY...', '...YY...', '........', 'B......B', '.BBBBBB.'], 0);
+const om = RL.movesFor(own);
+assert(own.palette.length === 4 && own.target[0][0] === own.palette.indexOf('K') && own.target[2][0] === -1 && om >= 6 && om <= 120, 'своя картина: палитра/цели/ходы ' + om);
+console.log(`✓ мастерская: своя картина — уровень с ${own.palette.length} цветами, ходов ${om}`);
 console.log('ВСЁ ОК');

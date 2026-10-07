@@ -153,4 +153,11 @@ function bestMove(S, seed = 1) {
   return best;
 }
 
-globalThis.RL = { N, rng, newGame, move, groups, hasMove, need, won, bestMove, specialOf };
+// Ходы для своей картины (мастерская): бот проходит её несколько раз, медиана × 1,8 + 6 — как у картин кампании
+function movesFor(level, runs = 3) {
+  const res = [];
+  for (let s = 1; s <= runs; s++) { const G = newGame(level, s * 7919); while (!won(G) && G.moves < 150) { const m = bestMove(G, G.moves + 1); if (!m) break; move(G, m[0], m[1]); } res.push(G.moves); }
+  res.sort((a, b) => a - b); return Math.ceil(res[res.length >> 1] * 1.8 + 6);
+}
+
+globalThis.RL = { movesFor, N, rng, newGame, move, groups, hasMove, need, won, bestMove, specialOf };

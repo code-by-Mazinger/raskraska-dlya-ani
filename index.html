@@ -97,6 +97,26 @@ canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px
 #bouquet{position:relative;width:min(80vw,320px);height:min(60vw,240px)}
 #bouquet .pc{position:absolute;transition:none}
 #start .go{font-size:22px;padding:16px 60px}
+#start .link{border:0;background:rgba(255,255,255,.6);border-radius:14px;padding:8px 14px;font:inherit;font-size:14px;font-weight:700;color:var(--accent);cursor:pointer}
+#start .link[hidden]{display:none}
+.ovl.top{z-index:10}                                                   /* открываются со стартового экрана (у него z-index 9) */
+/* мастерская */
+#ed{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;width:min(78vw,300px);margin:8px auto;touch-action:none}
+#ed i{display:block;aspect-ratio:1;border-radius:4px;background:#f1e8f6;box-shadow:inset 0 0 0 1px #e2d3ea}
+#edPal{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin:8px 0}
+.sw{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(90,40,120,.25);cursor:pointer;font-size:16px;color:#b08ab8;display:flex;align-items:center;justify-content:center;background:#fff}
+.sw.sel{outline:3px solid var(--accent);outline-offset:1px}
+#edName,#moveIn{width:100%;font:inherit;font-size:17px;padding:10px 12px;border-radius:12px;border:2px solid #e2c6f0;outline:none;text-align:center;color:var(--ink);background:#fff;margin-top:6px}
+#edErr{min-height:20px;color:#d6304a;font-size:14px;margin:6px 0}
+#editor .card{padding:16px}#editor h2{margin:0 0 4px}#editor p{margin:4px 0}
+#editor .go{padding:11px 14px;font-size:15px;margin-top:4px}#editor .row{gap:6px;flex-wrap:nowrap}
+#ed{width:min(72vw,280px)}
+.mh{margin:14px 0 4px;color:var(--accent);font-size:18px}
+#mine{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;margin:8px 0}
+#mine .g{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700;color:var(--ink2);cursor:pointer}
+#mine canvas,#mine .plus{width:76px;height:76px;image-rendering:pixelated;border-radius:10px;border:2px solid #fff;box-shadow:0 3px 10px rgba(155,93,229,.18);background:var(--paper)}
+#mine .plus{display:flex;align-items:center;justify-content:center;font-size:34px;color:var(--accent);border:2px dashed #e2b6d4;box-shadow:none;background:rgba(255,255,255,.6)}
+.steps{text-align:left;margin:6px 0;padding-left:22px;line-height:1.45}.steps li{margin:4px 0}
 </style>
 </head>
 <body>
@@ -139,6 +159,8 @@ canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px
   <div class="ttl">Раскраска<br>для Ани</div>
   <div id="bouquet" aria-hidden="true"></div>
   <div class="sub">Собирай цветы по три — они раскрашивают картину под собой. Нарисуй всю картину!</div>
+  <button class="link" id="moveBtn" hidden>Уже играла в Сафари? Перенести прогресс</button>
+  <button class="link" id="a2hs" hidden>📲 Сохрани игру на экран «Домой» — как?</button>
   <button class="go" id="startBtn">Старт</button>
 </div>
 <div class="ovl" id="win" hidden><div class="card">
@@ -157,7 +179,36 @@ canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px
   <h2>Галерея Ани</h2>
   <small id="galSub"></small>
   <div id="grid"></div>
-  <button class="go" id="galBack">Рисовать</button>
+  <h3 class="mh">Мои картины</h3>
+  <div id="mine"></div>
+  <button class="go" id="galBack">Играть</button>
+</div></div>
+<div class="ovl" id="editor" hidden><div class="card">
+  <h2>Мастерская 🎨</h2>
+  <p><small>Нарисуй картинку — она станет уровнем. Выбери цвет и води пальцем по клеткам.</small></p>
+  <div id="ed"></div>
+  <div id="edPal"></div>
+  <input id="edName" maxlength="20" placeholder="Название картины" autocomplete="off">
+  <p id="edErr"></p>
+  <div class="row"><button class="go ghost" id="edClear">Очистить</button><button class="go ghost" id="edCancel">Отмена</button><button class="go" id="edOk">Готово — играть</button></div>
+</div></div>
+<div class="ovl" id="mineCard" hidden><div class="card">
+  <h2 id="mcT"></h2>
+  <canvas class="pic" id="mcPic" width="8" height="8"></canvas>
+  <div class="row"><button class="go ghost" id="mcDel">Удалить</button><button class="go ghost" id="mcEdit">Изменить</button><button class="go" id="mcPlay">Играть</button></div>
+  <button class="go ghost" id="mcBack">Назад</button>
+</div></div>
+<div class="ovl top" id="a2hsCard" hidden><div class="card">
+  <h2>Игра на экране «Домой» 📲</h2>
+  <p>Так она откроется как приложение, и нарисованные картины не потеряются: Сафари стирает данные сайта, если его долго не открывать.</p>
+  <div id="a2hsText"></div>
+  <button class="go" id="a2hsOk">Понятно</button>
+</div></div>
+<div class="ovl top" id="moveCard" hidden><div class="card">
+  <h2>Перенести прогресс ✨</h2>
+  <p>Введи номер картины, до которой дошла в Сафари, — подсказка «как?» там его показывает.</p>
+  <input id="moveIn" type="number" inputmode="numeric" min="1" max="999" placeholder="Номер картины">
+  <div class="row"><button class="go ghost" id="moveNo">Не надо</button><button class="go" id="moveGo">Перенести</button></div>
 </div></div>
 <div class="ovl" id="intro" hidden><div class="card">
   <h2>Инструменты художника 🎨</h2>

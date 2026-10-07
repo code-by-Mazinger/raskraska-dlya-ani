@@ -60,7 +60,8 @@ const NOTE = { R: 523.25, Y: 587.33, B: 659.25, P: 783.99, K: 880, G: 1046.5, O:
 for (const ev of ['pointerup', 'touchend']) addEventListener(ev, audio, { passive: true });
 
 // ─── состояние ───
-let L = Math.max(0, +ls('rk_level') || 0), cur = L, lv, S, pal, budget, extra, busy = false, sel = null, cs = 40, idleT = 0;
+let L = Math.max(0, +ls('rk_level') || 0), cur = L, own = -1, lv, S, pal, budget, extra, busy = false, sel = null, cs = 40, idleT = 0;   // own — номер своей картины (−1 — кампания)
+const mine = () => { try { return JSON.parse(ls('rk_mine') || '[]'); } catch (e) { return []; } };   // свои картины: [{name, rows, moves}]
 const stars = (() => { try { return JSON.parse(ls('rk_stars') || '{}'); } catch (e) { return {}; } })();
 const board = $('board'), pcs = new Map(), cells = [];
 
@@ -88,17 +89,18 @@ function drawPic(cv, rows, painted, ghost) {                                    
 }
 
 // ─── уровень ───
-function start(i) {
-  cur = i; lv = LV.levelOf(i); pal = lv.palette; budget = lv.moves; extra = 0; sel = null;
+const start = i => startLevel(LV.levelOf(i), i, -1);
+function startLevel(level, i, j) {
+  cur = i; own = j; lv = level; pal = lv.palette; budget = lv.moves; extra = 0; sel = null;
   S = newGame(lv, Date.now() % 1e9);
   board.innerHTML = ''; pcs.clear(); cells.length = 0;
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const el = document.createElement('div'); el.className = 'cell'; board.appendChild(el); cells.push({ x, y, el }); }
   layout();
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { cellLook(x, y); place(makePiece(S.B[y][x]), x, y); }
   drawPic($('goal'), lv.rows);
-  $('lvl').textContent = i < LV.PICS.length ? `Картина ${i + 1} из ${LV.PICS.length} · ${lv.name}` : `${lv.name} · свободная игра`;
+  $('lvl').textContent = j >= 0 ? `Моя картина · ${lv.name}` : i < LV.PICS.length ? `Картина ${i + 1} из ${LV.PICS.length} · ${lv.name}` : `${lv.name} · свободная игра`;
   hud(); poke();
-  if (i === 2 && !ls('rk_intro')) { ls('rk_intro', 1); $('intro').hidden = false; }
+  if (j < 0 && i === 2 && !ls('rk_intro')) { ls('rk_intro', 1); $('intro').hidden = false; }
 }
 function hud() {
   const tot = lv.target.flat().filter(t => t >= 0).length, left = tot - need(S);
@@ -239,12 +241,14 @@ async function finish() {
   cats.forEach(c => { happy(c, 3000); hearts(c); catJump(c); }); purr();
   await wait(700);
   const left = budget + extra - S.moves, st = extra > 0 ? 1 : left >= budget * 0.25 ? 3 : 2;
-  if (cur < LV.PICS.length) stars[cur] = Math.max(stars[cur] || 0, st);
-  ls('rk_stars', JSON.stringify(stars));
-  if (cur === L) { L++; ls('rk_level', L); }
+  if (own < 0) {
+    if (cur < LV.PICS.length) stars[cur] = Math.max(stars[cur] || 0, st);
+    ls('rk_stars', JSON.stringify(stars));
+    if (cur === L) { L++; ls('rk_level', L); }
+  }
   drawPic($('winPic'), lv.rows);
   $('stars').textContent = '★'.repeat(st) + '☆'.repeat(3 - st);
-  $('winT').textContent = cur === LV.PICS.length - 1 ? 'Галерея собрана! 💐' : `Картина «${lv.name}» готова!`;
+  $('winT').textContent = own >= 0 ? `Твоя картина «${lv.name}» готова! 🎨` : cur === LV.PICS.length - 1 ? 'Галерея собрана! 💐' : `Картина «${lv.name}» готова!`;
   $('winInfo').textContent = extra > 0 ? 'Дорисовала с дополнительными ходами — тоже считается!' : `Осталось ходов: ${left}`;
   $('win').hidden = false; busy = false;
 }
@@ -259,8 +263,51 @@ function gallery() {
   $('grid').innerHTML = LV.PICS.map(([n], i) => `<div class="g${i > L ? ' no' : ''}${i === cur ? ' cur' : ''}" data-i="${i}"><canvas width="8" height="8"></canvas>`
     + `<span>${i <= L ? n : '?'}</span><span>${stars[i] ? '★'.repeat(stars[i]) : ''}</span></div>`).join('');
   [...$('grid').children].forEach(g => { const i = +g.dataset.i; drawPic(g.querySelector('canvas'), LV.PICS[i][1], null, !stars[i]); });
+  const m = mine();
+  $('mine').innerHTML = m.map((p, j) => `<div class="g" data-j="${j}"><canvas width="8" height="8"></canvas><span></span></div>`).join('') + '<div class="g" data-j="-1"><div class="plus">＋</div><span>Нарисовать свою</span></div>';
+  m.forEach((p, j) => { const g = $('mine').children[j]; drawPic(g.querySelector('canvas'), p.rows); g.querySelector('span').textContent = p.name; });   // название — текстом: введено вручную
   $('gallery').hidden = false;
 }
+$('mine').onclick = e => { const g = e.target.closest('.g'); if (!g) return; const j = +g.dataset.j; if (j < 0) openEditor(-1); else mineCard(j); };
+let mcIdx = -1;
+function mineCard(j) { mcIdx = j; const p = mine()[j]; $('mcT').textContent = p.name; drawPic($('mcPic'), p.rows); $('gallery').hidden = true; $('mineCard').hidden = false; }
+$('mcPlay').onclick = () => { const p = mine()[mcIdx]; $('mineCard').hidden = true; startLevel(LV.levelFrom(p.name, p.rows, 0, p.moves), cur, mcIdx); };
+$('mcEdit').onclick = () => { $('mineCard').hidden = true; openEditor(mcIdx); };
+$('mcDel').onclick = () => { if (!confirm('Удалить эту картину?')) return; const m = mine(); m.splice(mcIdx, 1); ls('rk_mine', JSON.stringify(m)); $('mineCard').hidden = true; gallery(); };
+$('mcBack').onclick = () => { $('mineCard').hidden = true; gallery(); };
+
+// ─── мастерская: своя картина 8×8 → уровень (ходы считает бот, как у картин кампании) ───
+let edRows = [], edColor = 'K', edIdx = -1, edDown = false;
+function openEditor(j) {
+  edIdx = j; const m = mine();
+  edRows = j >= 0 ? m[j].rows.map(r => r.split('')) : Array.from({ length: N }, () => Array(N).fill('.'));
+  $('edName').value = j >= 0 ? m[j].name : ''; $('edErr').textContent = '';
+  $('ed').innerHTML = edRows.map((r, y) => r.map((k, x) => `<i data-x="${x}" data-y="${y}"></i>`).join('')).join('');
+  [...$('ed').children].forEach(el => edLook(el)); edPal();
+  $('gallery').hidden = true; $('editor').hidden = false;
+}
+function edLook(el) { const k = edRows[+el.dataset.y][+el.dataset.x]; el.style.background = k === '.' ? '' : LV.COLORS[k]; }
+function edPal() { $('edPal').innerHTML = (LV.KEYS + '.').split('').map(k => `<button class="sw${k === edColor ? ' sel' : ''}" data-k="${k}" aria-label="${k === '.' ? 'Ластик' : 'Цвет'}" style="${k === '.' ? '' : 'background:' + LV.COLORS[k]}">${k === '.' ? '✕' : ''}</button>`).join(''); }
+$('edPal').onclick = e => { const b = e.target.closest('.sw'); if (!b) return; edColor = b.dataset.k; edPal(); bell(k2n(edColor), 0, 0.5, 0.08); };
+const k2n = k => NOTE[k] || 440;
+function edPaint(e) { const t = document.elementFromPoint(e.clientX, e.clientY); if (!t || t.parentElement !== $('ed')) return;
+  const x = +t.dataset.x, y = +t.dataset.y; if (edRows[y][x] === edColor) return; edRows[y][x] = edColor; edLook(t); if (edColor !== '.') bell(k2n(edColor) * 2, 0, 0.3, 0.04); }
+$('ed').addEventListener('pointerdown', e => { e.preventDefault(); audio(); edDown = true; edPaint(e); });
+$('ed').addEventListener('pointermove', e => { if (edDown) edPaint(e); });
+addEventListener('pointerup', () => { edDown = false; });
+$('edClear').onclick = () => { edRows = edRows.map(r => r.map(() => '.')); [...$('ed').children].forEach(el => edLook(el)); };
+$('edCancel').onclick = () => { $('editor').hidden = true; gallery(); };
+$('edOk').onclick = () => {
+  const rows = edRows.map(r => r.join('')), n = rows.join('').replace(/\./g, '').length;
+  if (n < 6) { $('edErr').textContent = 'Нарисуй хотя бы 6 клеток'; return; }
+  const m = mine(), name = $('edName').value.trim().slice(0, 20) || `Моя картина ${edIdx >= 0 ? edIdx + 1 : m.length + 1}`;
+  $('edErr').textContent = 'Считаю ходы…';
+  setTimeout(() => {                                                            // дать надписи показаться: бот считает до секунды
+    const level = LV.levelFrom(name, rows, 0), moves = RL.movesFor(level), p = { name, rows, moves };
+    const j = edIdx >= 0 ? edIdx : m.length; m[j] = p; ls('rk_mine', JSON.stringify(m));
+    $('editor').hidden = true; startLevel(LV.levelFrom(name, rows, 0, moves), cur, j);
+  }, 30);
+};
 $('grid').onclick = e => { const g = e.target.closest('.g'); if (!g) return; const i = +g.dataset.i;
   if (i > L) { $('galSub').textContent = 'Эта картина откроется позже'; return; }
   $('gallery').hidden = true; $('win').hidden = true; start(i); };
@@ -278,6 +325,22 @@ $('snd').classList.toggle('off', !soundOn());
 $('startBtn').onclick = () => { audio(); $('start').hidden = true; start(L); [0, 4, 7].forEach((s, k) => bell(NOTE.K * Math.pow(2, s / 12) / 2, k * 0.12, 1.4, 0.14)); };
 $('home').onclick = () => { $('start').hidden = false; };
 
+// ─── игра на экране «Домой». На iPhone Сафари стирает данные сайта, если его 7 дней не открывать; у приложения с иконки — нет.
+// Но у такого приложения на iPhone своя память, не общая с Сафари, — номер картины переносим вручную (звёзды и свои картины не переносятся) ───
+const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (!standalone && matchMedia('(pointer: coarse)').matches) $('a2hs').hidden = false;
+if (standalone && !ls('rk_level')) $('moveBtn').hidden = false;
+$('a2hs').onclick = () => { $('a2hsText').innerHTML = ios
+  ? `<ol class="steps"><li>Внизу Сафари нажми «Поделиться» — квадрат со стрелкой ⬆️.</li><li>Пролистай вниз и выбери «На экран „Домой“», потом «Добавить».</li><li>Дальше открывай игру с иконки «Раскраска».</li></ol>`
+    + `<p>У приложения на iPhone своя память, поэтому прогресс нужно перенести: в приложении нажми «Перенести прогресс» и введи <b>${L + 1}</b>. Свои картины рисуй уже в приложении.</p>`
+  : `<ol class="steps"><li>Нажми меню браузера ⋮.</li><li>Выбери «Добавить на главный экран» или «Установить приложение».</li><li>Дальше открывай игру с иконки «Раскраска» — прогресс останется тот же.</li></ol>`;
+  $('a2hsCard').hidden = false; };
+$('a2hsOk').onclick = () => { $('a2hsCard').hidden = true; };
+$('moveBtn').onclick = () => { $('moveCard').hidden = false; };
+$('moveNo').onclick = () => { $('moveCard').hidden = true; };
+$('moveGo').onclick = () => { const n = Math.floor(+$('moveIn').value); if (!(n >= 1 && n <= 999)) { $('moveIn').focus(); return; }
+  L = n - 1; ls('rk_level', L); $('moveCard').hidden = true; $('moveBtn').hidden = true; };
 if (/[?&]debug/.test(location.search)) window.RK = { S: () => S, turn };                // для проверок: ?debug
 // офлайн и «на экран Домой»; при возврате в игру — проверить новую версию и перезагрузиться (уровень хранится в localStorage)
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {

@@ -26,14 +26,15 @@ const PICS = [
 
 // Ходы на картину: по боту (node selfcheck.js --calibrate: медиана × 1,8 + 6 — человек медленнее жадного бота)
 const MOVES = [15, 19, 23, 17, 19, 15, 30, 32, 28, 37, 42, 46, 48, 48, 48, 44, 35, 82, 50];
-// Уровень i: картина, цвета фишек (цвета картины + «лишние» до 4), ходы
-function levelOf(i) {
-  const [name, rows] = PICS[i % PICS.length], used = [...new Set(rows.join('').replace(/\./g, ''))];
-  // цветов фишек: на первых шести картинах 4 (на трёх каскады красят всё сами), дальше 5; больше — только если столько в картине.
-  // Пятый цвет вводится плавно: сначала он редкий (вес 0,25), к последней картине — наравне с остальными (сложность растёт без ступеньки)
+// Уровень из картинки: цвета фишек — цвета картины + «лишние»; i — номер для сложности (своя картина — как первые, i = 0).
+// На первых шести картинах 4 цвета фишек (на трёх каскады красят всё сами), дальше 5; больше — только если столько в картине.
+// Пятый цвет вводится плавно: сначала он редкий (вес 0,25), к последней картине — наравне с остальными (сложность растёт без ступеньки).
+function levelFrom(name, rows, i, moves) {
+  const used = [...new Set(rows.join('').replace(/\./g, ''))];
   const k = Math.max(used.length, i < 6 ? 4 : 5), extra = KEYS.split('').filter(c => !used.includes(c));
   const palette = used.concat(extra.slice(0, Math.max(0, k - used.length)));
   const ew = i < 6 ? 1 : Math.min(1, 0.25 + (i - 6) * 0.06), weights = palette.map((c, j) => j < Math.max(used.length, 4) ? 1 : ew);
-  return { name, rows, palette, weights, moves: MOVES[i % PICS.length], target: rows.map(r => r.split('').map(c => c === '.' ? -1 : palette.indexOf(c))) };
+  return { name, rows, palette, weights, moves, target: rows.map(r => r.split('').map(c => c === '.' ? -1 : palette.indexOf(c))) };
 }
-globalThis.LV = { COLORS, KEYS, PICS, MOVES, levelOf };
+const levelOf = i => levelFrom(PICS[i % PICS.length][0], PICS[i % PICS.length][1], i, MOVES[i % PICS.length]);
+globalThis.LV = { COLORS, KEYS, PICS, MOVES, levelOf, levelFrom };
