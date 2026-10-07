@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#b99cf0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Раскраска">
+<title>Раскраска для Ани</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+/* Фон фиолетовый (просьба Георгия); поле — лист бумаги, под цветами холст картины */
+:root{--ink:#3f2160;--ink2:#5b3f80;--accent:#e8579a;--paper:#fffaf3;--bg:linear-gradient(160deg,#d2bdff 0%,#a988ea 55%,#c3a6ff 100%)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;color:var(--ink);
+  -webkit-user-select:none;user-select:none;touch-action:none}
+body{background:var(--bg)}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 10px)}
+header{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{margin:0;font-size:clamp(17px,5vw,24px);font-weight:800;background:linear-gradient(90deg,#ff4f9a,#4a1f9c);-webkit-background-clip:text;background-clip:text;color:transparent;cursor:pointer;white-space:nowrap}
+#lvl{font-size:13px;color:var(--ink2);font-weight:600}
+.btns{display:flex;gap:6px;flex:none}
+.ib{width:38px;height:38px;border-radius:13px;border:1.5px solid #fff;background:rgba(255,255,255,.55);font-size:18px;color:var(--ink);
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(155,93,229,.15);cursor:pointer}
+.ib.off{opacity:.45}
+#bar{width:100%;max-width:520px;display:flex;align-items:center;gap:12px;margin:10px 0}
+#goal{flex:none;width:62px;height:62px;border-radius:10px;border:2px solid #fff;box-shadow:0 3px 10px rgba(155,93,229,.2);image-rendering:pixelated;background:var(--paper)}
+#meter{flex:1}
+#movesL{font-size:14px;font-weight:700;color:var(--ink2)}#movesL b{font-size:24px;color:var(--accent);margin-right:4px}
+#prog{height:10px;border-radius:6px;background:rgba(255,255,255,.75);overflow:hidden;margin-top:6px;border:1px solid #fff}
+#prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff8fc8,#9b6bdc);transition:width .4s}
+#progT{font-size:12px;color:var(--ink2);margin-top:3px}
+#board{position:relative;flex:none;margin:auto 0;border-radius:16px;background:var(--paper);overflow:hidden;box-shadow:0 10px 30px rgba(155,93,229,.22),inset 0 0 0 2px #fff;touch-action:none}
+/* клетка холста: нужна краска — бледный тон её цвета (видно вокруг цветка); закрашена — сочный цвет */
+.cell{position:absolute;border-radius:5px;transition:background .35s,box-shadow .35s}
+.cell.done{box-shadow:inset 0 0 0 2px rgba(255,255,255,.35),inset 0 -6px 10px rgba(0,0,0,.08)}
+.cell.pop{animation:cellpop .45s ease-out}
+@keyframes cellpop{40%{transform:scale(1.18)}100%{transform:none}}
+.pc{position:absolute;left:0;top:0;transition:transform .22s cubic-bezier(.35,0,.5,1.25),opacity .2s;will-change:transform}
+.pc svg{display:block;width:100%;height:100%;filter:drop-shadow(0 2px 2px rgba(90,40,90,.28))}
+.pc.sel svg{animation:wig .55s ease-in-out infinite}
+.pc.hint svg{animation:hint 1s ease-in-out infinite}
+@keyframes wig{50%{transform:scale(1.13) rotate(9deg)}}
+@keyframes hint{50%{transform:scale(1.18)}}
+.pc.out{opacity:0}
+.pc.born svg{animation:born .45s ease-out}
+@keyframes born{0%{transform:scale(.2) rotate(-90deg)}70%{transform:scale(1.25)}100%{transform:none}}
+/* эффекты инструментов: мазок кисти, клякса, палитра */
+.fx{position:absolute;pointer-events:none;border-radius:999px;opacity:.85;animation:fx .5s ease-out forwards}
+@keyframes fx{0%{opacity:.95;transform:scale(.6)}100%{opacity:0;transform:scale(1.15)}}
+.spark{position:absolute;width:8px;height:8px;border-radius:50%;pointer-events:none;animation:spark .6s ease-out forwards}
+@keyframes spark{to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}}
+#tip{height:20px;margin-top:6px;font-size:13px;color:var(--ink2);text-align:center}
+/* котики под полем: моргают, мурлыкают, если погладить, и подсказывают ход */
+#cats{width:100%;max-width:520px;height:76px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 16px}
+.cat{position:relative;width:64px;height:74px;cursor:pointer;transform-origin:50% 100%;animation:breathe 3.4s ease-in-out infinite;-webkit-touch-callout:none}
+.cat svg{display:block;width:100%;height:100%;overflow:visible}
+.cat .eo{transform-box:fill-box;transform-origin:center;animation:blink 4.6s infinite}
+.cat .eh,.cat .es,.cat .tongue{display:none}.cat.happy .eo{display:none}.cat.happy .eh{display:inline}
+.cat .tail{transform-box:view-box;transform-origin:290px 320px;animation:wag 2.6s ease-in-out infinite}
+#cat2{animation-delay:-1.7s}#cat2 .eo{animation-duration:3.9s}#cat2 .tail{animation-duration:2.1s}
+.cat.jump{animation:jump .5s ease-out}
+@keyframes breathe{0%,100%{transform:none}50%{transform:scale(1.02,1.035)}}
+@keyframes blink{0%,93%,100%{transform:none}96%{transform:scaleY(.1)}}
+@keyframes wag{0%,100%{transform:rotate(0)}50%{transform:rotate(-9deg)}}
+@keyframes jump{30%{transform:translateY(-14px) scale(.95,1.06)}60%{transform:scale(1.08,.92)}100%{transform:none}}
+.bub{position:absolute;bottom:78px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:14px;font-weight:700;color:var(--accent);background:#fff;border-radius:14px;padding:6px 10px;box-shadow:0 4px 14px rgba(90,40,120,.25);opacity:0;transition:opacity .25s;pointer-events:none}
+.bub.on{opacity:1}#cat1 .bub{left:0;transform:none}#cat2 .bub{left:auto;right:0;transform:none}
+.heart{position:fixed;z-index:4;pointer-events:none;font-size:16px;opacity:0;animation:heart 1.4s ease-out forwards}
+@keyframes heart{0%{opacity:1;transform:translateY(0) scale(.6)}100%{opacity:0;transform:translateY(-54px) scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.cat,.cat .eo,.cat .tail{animation:none}}
+/* окна */
+.ovl{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(200,175,250,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:5}
+.ovl[hidden]{display:none}
+.card{width:min(420px,94vw);max-height:92vh;overflow:auto;border-radius:24px;background:rgba(255,255,255,.88);border:2px solid #fff;box-shadow:0 20px 60px rgba(155,93,229,.3);padding:20px;text-align:center}
+.card h2{margin:4px 0 10px;font-size:23px;color:var(--accent)}
+.card p{margin:8px 0;line-height:1.45}
+.go{margin-top:10px;border:0;border-radius:16px;padding:14px 28px;font-size:18px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,#ff7eb3,#9b6bdc);box-shadow:0 8px 20px rgba(232,87,154,.35)}
+.go.ghost{background:rgba(255,255,255,.75);color:var(--accent);box-shadow:none;border:2px solid #f3b6d4}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px;border:3px solid #fff;box-shadow:0 8px 26px rgba(90,40,90,.25);background:var(--paper)}
+.stars{font-size:30px;letter-spacing:4px;margin:8px 0}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;margin:12px 0}
+#grid .g{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700;color:var(--ink2);cursor:pointer}
+#grid canvas{width:76px;height:76px;image-rendering:pixelated;border-radius:10px;border:2px solid #fff;box-shadow:0 3px 10px rgba(155,93,229,.18);background:var(--paper)}
+#grid .g.no canvas{opacity:.5}
+#grid .g.cur canvas{border-color:var(--accent)}
+/* старт */
+#start{position:fixed;inset:0;z-index:9;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px}
+#start[hidden]{display:none}
+#start .ttl{font-size:clamp(32px,9vw,48px);font-weight:900;text-align:center;line-height:1.1;background:linear-gradient(90deg,#ff4f9a,#4a1f9c);-webkit-background-clip:text;background-clip:text;color:transparent}
+#start .sub{color:var(--ink2);font-size:15px;text-align:center;max-width:320px}
+#bouquet{position:relative;width:min(80vw,320px);height:min(60vw,240px)}
+#bouquet .pc{position:absolute;transition:none}
+#start .go{font-size:22px;padding:16px 60px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div><h1 id="home" role="button" aria-label="На главный экран">Раскраска для Ани</h1><div id="lvl"></div></div>
+    <div class="btns">
+      <button class="ib" id="gal" aria-label="Галерея">🖼</button>
+      <button class="ib" id="snd" aria-label="Звук">♪</button>
+    </div>
+  </header>
+  <div id="bar">
+    <canvas id="goal" width="8" height="8" aria-label="Что рисуем"></canvas>
+    <div id="meter"><div id="movesL"><b id="moves">0</b>ходов</div><div id="prog"><i></i></div><div id="progT"></div></div>
+  </div>
+  <div id="board"></div>
+  <div id="tip"></div>
+  <div id="cats">
+    <div class="cat" id="cat1" role="button" aria-label="Котик: погладить и подсказка"><svg viewBox="95 0 290 380">
+  <defs><radialGradient id="kfur" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#fffaf6"/><stop offset=".7" stop-color="#ffe6ef"/><stop offset="1" stop-color="#f7cfe0"/></radialGradient></defs>
+  <g fill="url(#kfur)" stroke="#e7b3cd" stroke-width="5" stroke-linejoin="round">
+  <path class="tail" d="M290 330 C360 320 370 240 330 220 C315 213 305 228 318 236 C345 252 335 300 285 305 Z"/>
+  <path d="M120 360 C105 290 120 215 200 210 C280 215 295 290 280 360 Z"/>
+  <ellipse cx="165" cy="358" rx="26" ry="14"/><ellipse cx="235" cy="358" rx="26" ry="14"/>
+  <path d="M118 120 L130 45 L185 92 Z"/><path d="M282 120 L270 45 L215 92 Z"/>
+  <ellipse cx="200" cy="150" rx="100" ry="82"/></g>
+  <path d="M134 108 L140 66 L170 93 Z M266 108 L260 66 L230 93 Z" fill="#ffb3d1"/>
+  <path d="M232 78 L210 62 L212 96 Z M232 78 L256 60 L256 96 Z" fill="#ff7eb3" stroke="#d63a7d" stroke-width="3" stroke-linejoin="round"/><circle cx="233" cy="79" r="8" fill="#ff5c9e"/>
+  <g class="eo" fill="#5b3a5e"><ellipse cx="163" cy="146" rx="11" ry="14"/><ellipse cx="237" cy="146" rx="11" ry="14"/><circle cx="167" cy="140" r="4" fill="#fff"/><circle cx="241" cy="140" r="4" fill="#fff"/></g>
+  <g class="eh" fill="none" stroke="#5b3a5e" stroke-width="7" stroke-linecap="round"><path d="M148 150 Q163 134 178 150"/><path d="M222 150 Q237 134 252 150"/></g>
+  <g class="es" fill="none" stroke="#5b3a5e" stroke-width="6" stroke-linecap="round"><path d="M150 146 Q163 157 176 146"/><path d="M224 146 Q237 157 250 146"/></g>
+  <ellipse cx="140" cy="176" rx="18" ry="10" fill="#ff9cc4" opacity=".6"/><ellipse cx="260" cy="176" rx="18" ry="10" fill="#ff9cc4" opacity=".6"/>
+  <path d="M192 168 L208 168 L200 177 Z" fill="#ff7eb3"/><path d="M200 177 Q192 190 182 184 M200 177 Q208 190 218 184" fill="none" stroke="#5b3a5e" stroke-width="4" stroke-linecap="round"/>
+<path class="tongue" d="M192 187 Q200 210 208 187 Z" fill="#ff7eb3" stroke="#d63a7d" stroke-width="2"/>
+  </svg><div class="bub"></div></div>
+    <div class="cat" id="cat2" role="button" aria-label="Рыжий котик: погладить и подсказка"><div class="bub"></div></div>
+  </div>
+</div>
+<div id="start">
+  <div class="ttl">Раскраска<br>для Ани</div>
+  <div id="bouquet" aria-hidden="true"></div>
+  <div class="sub">Собирай цветы по три — они раскрашивают картину под собой. Нарисуй всю картину!</div>
+  <button class="go" id="startBtn">Старт</button>
+</div>
+<div class="ovl" id="win" hidden><div class="card">
+  <h2 id="winT">Картина готова!</h2>
+  <canvas class="pic" id="winPic" width="8" height="8"></canvas>
+  <div class="stars" id="stars"></div>
+  <p id="winInfo"></p>
+  <div class="row"><button class="go ghost" id="winGal">Галерея</button><button class="go" id="next">Дальше</button></div>
+</div></div>
+<div class="ovl" id="out" hidden><div class="card">
+  <h2>Ходы кончились</h2>
+  <p>Ничего страшного — картину можно дорисовать.</p>
+  <button class="go" id="more">Ещё 5 ходов 🌸</button>
+</div></div>
+<div class="ovl" id="gallery" hidden><div class="card">
+  <h2>Галерея Ани</h2>
+  <small id="galSub"></small>
+  <div id="grid"></div>
+  <button class="go" id="galBack">Рисовать</button>
+</div></div>
+<div class="ovl" id="intro" hidden><div class="card">
+  <h2>Инструменты художника 🎨</h2>
+  <p><b>4 цветка в ряд</b> — кисть: красит весь ряд.<br><b>Уголок</b> — клякса: красит 3×3.<br><b>5 в ряд</b> — палитра: поменяй её с цветком — сработают все цветы этого цвета.</p>
+  <p><small>Краска растекается на соседнюю клетку того же цвета.</small></p>
+  <button class="go" id="introGo">Понятно</button>
+</div></div>
+<script src="levels.js"></script>
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
