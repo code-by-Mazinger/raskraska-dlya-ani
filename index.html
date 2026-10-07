@@ -108,6 +108,7 @@ canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px
 #start .go{font-size:22px;padding:16px 60px}
 #start .link{border:0;background:rgba(255,255,255,.6);border-radius:14px;padding:8px 14px;font:inherit;font-size:14px;font-weight:700;color:var(--accent);cursor:pointer}
 #start .link[hidden]{display:none}
+#start .sign{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 14px);text-align:center;font-size:13px;font-weight:700;letter-spacing:.06em;color:rgba(63,33,96,.55)}   /* подпись автора */
 .ovl.top{z-index:10}                                                   /* открываются со стартового экрана (у него z-index 9) */
 /* мастерская */
 #ed{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;width:min(78vw,300px);margin:8px auto;touch-action:none}
@@ -171,6 +172,7 @@ canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px
   <button class="link" id="moveBtn" hidden>Уже играла в Сафари? Перенести прогресс</button>
   <button class="link" id="a2hs" hidden>📲 Сохрани игру на экран «Домой» — как?</button>
   <button class="go" id="startBtn">Старт</button>
+  <div class="sign">code-by-Mazinger</div>
 </div>
 <div class="ovl" id="win" hidden><div class="card">
   <h2 id="winT">Картина готова!</h2>
