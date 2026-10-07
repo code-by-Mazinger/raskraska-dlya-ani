@@ -268,6 +268,7 @@ async function finish() {
   }
   drawPic($('winPic'), lv.rows);
   setTimeout(() => alive($('winPic'), lv), 350);                                 // картина оживает
+  prepShare(lv.rows, lv.name);
   $('stars').textContent = '★'.repeat(st) + '☆'.repeat(3 - st);
   $('winT').textContent = own >= 0 ? `Твоя картина «${lv.name}» готова! 🎨` : cur === LV.PICS.length - 1 ? 'Галерея собрана! 💐' : `Картина «${lv.name}» готова!`;
   $('winInfo').textContent = extra > 0 ? 'Дорисовала с дополнительными ходами — тоже считается!' : `Осталось ходов: ${left}`;
@@ -285,6 +286,29 @@ function alive(cv, level) {
     setTimeout(step, t === 'flap' ? 0 : 500);
   } else cv.classList.add('a-' + t);
 }
+// ─── поделиться картиной: открытка PNG через меню «Поделиться» iPhone (Web Share с файлом), где его нет — скачать.
+// iPhone открывает меню только сразу после нажатия — поэтому открытку готовлю заранее, когда открывается окно ───
+let shareFile = null;
+function prepShare(rows, name) {
+  shareFile = null; const W = 1080, c = document.createElement('canvas'); c.width = c.height = W; const g = c.getContext('2d');
+  const bg = g.createLinearGradient(0, 0, W, W); bg.addColorStop(0, '#d2bdff'); bg.addColorStop(0.55, '#a988ea'); bg.addColorStop(1, '#c3a6ff');
+  g.fillStyle = bg; g.fillRect(0, 0, W, W);
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  g.shadowColor = 'rgba(70,30,120,.35)'; g.shadowBlur = 40; g.shadowOffsetY = 14; g.fillStyle = '#fffaf3'; rr(170, 110, 740, 740, 44); g.fill();
+  g.shadowColor = 'transparent'; const s = 80, ox = 220, oy = 160;
+  rows.forEach((r, y) => r.split('').forEach((k, x) => { if (k !== '.') { g.fillStyle = LV.COLORS[k]; g.fillRect(ox + x * s, oy + y * s, s, s); } }));
+  g.textAlign = 'center'; g.fillStyle = '#3f2160'; g.font = '800 58px -apple-system, "SF Pro Rounded", "Segoe UI", sans-serif'; g.fillText(`«${name}»`, W / 2, 950);
+  g.fillStyle = '#4a2a70'; g.font = '600 38px -apple-system, "Segoe UI", sans-serif'; g.fillText('Раскраска для Ани 🌸', W / 2, 1018);
+  const fname = name.replace(/[\\/:*?"<>|]/g, '').trim() || 'Картина';
+  c.toBlob(b => { if (b) shareFile = new File([b], `${fname}.png`, { type: 'image/png' }); }, 'image/png');
+}
+async function share() {
+  if (!shareFile) return;
+  if (navigator.canShare && navigator.canShare({ files: [shareFile] })) { try { await navigator.share({ files: [shareFile] }); } catch (e) { /* закрыла меню — ничего */ } return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(shareFile); a.download = shareFile.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+}
+$('winShare').onclick = share;
+$('mcShare').onclick = share;
 $('next').onclick = () => { $('win').hidden = true; start(L); };
 $('more').onclick = () => { extra += 5; $('out').hidden = true; hud(); bell(NOTE.K, 0, 1, 0.14); const c = someCat(); happy(c); say(c, phrase('more')); };
 $('introGo').onclick = () => { $('intro').hidden = true; };
@@ -303,7 +327,7 @@ function gallery() {
 }
 $('mine').onclick = e => { const g = e.target.closest('.g'); if (!g) return; const j = +g.dataset.j; if (j < 0) openEditor(-1); else mineCard(j); };
 let mcIdx = -1;
-function mineCard(j) { mcIdx = j; const p = mine()[j]; $('mcT').textContent = p.name; drawPic($('mcPic'), p.rows); $('gallery').hidden = true; $('mineCard').hidden = false; }
+function mineCard(j) { mcIdx = j; const p = mine()[j]; $('mcT').textContent = p.name; drawPic($('mcPic'), p.rows); prepShare(p.rows, p.name); $('gallery').hidden = true; $('mineCard').hidden = false; }
 $('mcPlay').onclick = () => { const p = mine()[mcIdx]; $('mineCard').hidden = true; startLevel(LV.levelFrom(p.name, p.rows, 0, p.moves), cur, mcIdx); };
 $('mcEdit').onclick = () => { $('mineCard').hidden = true; openEditor(mcIdx); };
 $('mcDel').onclick = () => { if (!confirm('Удалить эту картину?')) return; const m = mine(); m.splice(mcIdx, 1); ls('rk_mine', JSON.stringify(m)); $('mineCard').hidden = true; gallery(); };
@@ -374,7 +398,7 @@ $('moveBtn').onclick = () => { $('moveCard').hidden = false; };
 $('moveNo').onclick = () => { $('moveCard').hidden = true; };
 $('moveGo').onclick = () => { const n = Math.floor(+$('moveIn').value); if (!(n >= 1 && n <= 999)) { $('moveIn').focus(); return; }
   L = n - 1; ls('rk_level', L); $('moveCard').hidden = true; $('moveBtn').hidden = true; };
-if (/[?&]debug/.test(location.search)) window.RK = { S: () => S, turn };                // для проверок: ?debug
+if (/[?&]debug/.test(location.search)) window.RK = { S: () => S, turn, card: () => shareFile };                // для проверок: ?debug
 // офлайн и «на экран Домой»; при возврате в игру — проверить новую версию и перезагрузиться (уровень хранится в localStorage)
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   const had = !!navigator.serviceWorker.controller;

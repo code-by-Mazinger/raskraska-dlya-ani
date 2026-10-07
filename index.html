@@ -82,6 +82,7 @@ h1{margin:0;font-size:clamp(17px,5vw,24px);font-weight:800;background:linear-gra
 .go{margin-top:10px;border:0;border-radius:16px;padding:14px 28px;font-size:18px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,#ff7eb3,#9b6bdc);box-shadow:0 8px 20px rgba(232,87,154,.35)}
 .go.ghost{background:rgba(255,255,255,.75);color:var(--accent);box-shadow:none;border:2px solid #f3b6d4}
 .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+#win .row,#mineCard .row{gap:8px}#win .go,#mineCard .go{padding:12px 16px;font-size:16px}
 canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px;border:3px solid #fff;box-shadow:0 8px 26px rgba(90,40,90,.25);background:var(--paper)}
 /* живая картина: 2–3 секунды движения в окне победы */
 .a-sway{transform-origin:50% 100%;animation:a-sway 1s ease-in-out 3}@keyframes a-sway{25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
@@ -176,7 +177,7 @@ canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px
   <canvas class="pic" id="winPic" width="8" height="8"></canvas>
   <div class="stars" id="stars"></div>
   <p id="winInfo"></p>
-  <div class="row"><button class="go ghost" id="winGal">Галерея</button><button class="go" id="next">Дальше</button></div>
+  <div class="row"><button class="go ghost" id="winGal">Галерея</button><button class="go ghost" id="winShare">📤 Поделиться</button><button class="go" id="next">Дальше</button></div>
 </div></div>
 <div class="ovl" id="out" hidden><div class="card">
   <h2>Ходы кончились</h2>
@@ -204,7 +205,7 @@ canvas.pic{width:220px;height:220px;image-rendering:pixelated;border-radius:14px
   <h2 id="mcT"></h2>
   <canvas class="pic" id="mcPic" width="8" height="8"></canvas>
   <div class="row"><button class="go ghost" id="mcDel">Удалить</button><button class="go ghost" id="mcEdit">Изменить</button><button class="go" id="mcPlay">Играть</button></div>
-  <button class="go ghost" id="mcBack">Назад</button>
+  <div class="row"><button class="go ghost" id="mcShare">📤 Поделиться</button><button class="go ghost" id="mcBack">Назад</button></div>
 </div></div>
 <div class="ovl top" id="a2hsCard" hidden><div class="card">
   <h2>Игра на экране «Домой» 📲</h2>
